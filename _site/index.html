@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <meta name="author" content="yjjptr" />
+    
+    <title>[stream of consciousness]</title>
+    
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link href="/atom.xml" rel="alternate" title="[stream of consciousness]" type="application/atom+xml" />
+    <link rel="stylesheet" href="/media/css/style.css">
+    <link rel="stylesheet" href="/media/css/fontawesome.css">
+    <link rel="stylesheet" href="/media/css/pygments.css">
+    <!--[if IE 7]>
+    <link rel="stylesheet" href="/media/css/fontawesome-ie7.css">
+    <![endif]-->
+  </head>
+  <body>
+      <div id="main" role="main">
+        <header>
+          <div id="header">
+            <h1><a title="[stream of consciousness]" class="" href="/">[stream of consciousness]</a></h1>
+          </div>
+          <nav>
+            <span><a title="Archive" class="icon-list-ul" href="/archive.html"></a></span>
+            <span><a title="Tags" class="icon-tags" href="/tags.html"></a></span>
+            <span><a title="About" class="icon-user" href="/about.html"></a></span>
+           <!-- <span><a title="Gallery" class="icon-film" href="http://foto.lhzhang.com"></a></span>-->
+            <span><a title="Blogroll" class="icon-link" href="/links.html"></a></span>
+            <span><a title="Subscribe" class="icon-rss" href="/atom.xml"></a></span>
+          </nav>
+        </header>
+        <div id="content">
+        <div>
+  <ul class="listing">
+  
+  <article class="content">
+    <section class="title">
+      <h2><a href="/2013/09/26/Xen-installation.html">Xen installation on Fedora</a></h2>
+    </section>
+    <section class="meta">
+    <span class="time">
+      <time datetime="2013-09-26">2013-09-26</time>
+    </span>
+    
+    <span class="tags">
+      
+      <a href="/tags.html#linux" title="linux">#linux</a>
+      
+      <a href="/tags.html#xen" title="xen">#xen</a>
+      
+      <a href="/tags.html#virtualization" title="virtualization">#virtualization</a>
+      
+    </span>
+    
+    </section>
+    <section class="post">
+      <p>About the following setups were my work logs when I was an intern in Ningbo Shufang Information Technology Co.,Ltd.</p>
+
+<p><strong>1. Install Fedora 17</strong><br/>
+Here I used 'LiveUSB Createtor' to make a live Fedora.<br/>
+About the procedure of Fedora installaztion, I will omit it;<br/>
+And the disk partition plan is listed below.</p>
+
+<table border="1" cellspacing="0" cellpading="0" width="300">
+<tr align="center">
+<td colspan="2">BIOS Boot</td><td>1MB</td>
+</tr>
+<tr align="center">
+<td>/boot</td><td>ext4</td><td>5120MB</td>
+</tr>
+<tr align="center">
+<td>/</td><td>ext4</td><td>51200MB</td>
+</tr>
+<tr align="center">
+<td colspan="2">swap</td><td>16384MB</td>
+</tr >
+<tr align="center">
+<td colspan="2">physical volume(LVM)</td><td>reamining space</td>
+</tr>
+</table>
+
+
+<p>Next, to create a LVM group, to name it vg_xen.</p>
+
+<table border="1" cellspacing="0" cellpading="0" width="300">
+<tr align="center">
+<td>lhome</td> <td>/lhome</td><td>ext4</td><td>512000MB</td>
+</tr>
+</table>
+
+
+<p>The <code>/lhome</code> directory is use to install &amp; store virtual machine.</p>
+
+<p><strong>2. Configure static IP</strong><br/>
+Firstly, it is necessary to run the command <code>ifconfig</code> to find which network card is being used.<br/>
+And then run the command below.<br/>
+<code>vi /etc/sysconfig/network-scripts/ifcfg-XXX</code><br/>
+'XXX' is the name of the network card which is being used now.<br/>
+Modify &amp; add the content to <code>ifcfg-XXX</code> below.</p>
+
+<div class="highlight"><pre><code class="cpp"><span class="n">BOOTPROTO</span><span class="o">=</span><span class="s">&quot;static&quot;</span>  
+<span class="n">IPADDR</span><span class="o">=</span><span class="s">&quot;10.16.0.246&quot;</span>  
+<span class="n">NETMASK</span><span class="o">=</span><span class="s">&quot;255.255.0.0&quot;</span>  
+<span class="n">GATEWAY</span><span class="o">=</span><span class="s">&quot;10.16.0.1&quot;</span>  
+<span class="n">DNS1</span><span class="o">=</span><span class="s">&quot;10.16.0.1&quot;</span> 
+</code></pre></div>
+
+
+<p>Then, restart the network service to take static IP effective. Attention, under Fedora 17, the command is<br/>
+<code>systemctl restart NetworkManager.service</code></p>
+
+<p><strong>3. Install Xen dom0</strong><br/>
+Firstly, to clear the iptables.</p>
+
+<div class="highlight"><pre><code class="cpp"><span class="n">iptables</span> <span class="o">-</span><span class="n">F</span>   
+<span class="n">iptables</span> <span class="o">-</span><span class="n">t</span> <span class="n">nat</span> <span class="o">-</span><span class="n">F</span>   
+</code></pre></div>
+
+
+<p>For safety's sake, copy a iptables file befor save rules.<br/>
+<code>cp /etc/sysconfig/iptable   /etc/sysconfig/iptables.bak</code><br/>
+<code>iptables-save &gt; /etc/sysconfig/iptables</code><br/>
+Restart iptables service.<br/>
+<code>systemctl restart iptables.service</code></p>
+
+<p>Next step is to disable the SELinux.<br/>
+<code>vi /etc/selinux/config</code><br/>
+Change 'SELinux' to disabled<br/>
+<code>SELinux=disabled</code><br/>
+Restart the machine.</p>
+
+<p>Now, we can install xen. Run the command below.<br/>
+<code>yum -y install xen</code><br/>
+If the download speed is less than 10KB/S, please read the Q&amp;A.1.</p>
+
+<p>Next is to configure the grub2. Run command.<br/>
+<code>grub2-mkconfig -o /boot/grub2/grub.cfg</code></p>
+
+<p>And then close X windows. Use tty3 as default.<br/>
+<code>rm -f /etc/systemd/system/default.target</code><br/>
+<code>ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target</code><br/>
+Ok, next starting the system, it will enter the tty3 mode automatically. <br/>
+For the Xen isn't the default boot item. We must set automactically select the Xen to start.<br/>
+So, first list the exsiting items.<br/>
+<code>grep ^menentry /boot/grub2/grub.cfg | cut -d "'" -f</code><br/>
+Then set grub default item.<br/>
+<code>grub2-set-default 'Linux Fedora, with Xen hyperisor'</code><br/>
+Attention, the 'Linux Fedora, with Xen hypervisor' may not be yours. You must let the name equal to the name of xen.<br/>
+You can run command below to find is the name 'Linux Fedora, with Xen hypervisor' equal to the name of xen. It must be same. Or Xen will not be selected automatically.<br/>
+<code>grub2-editenv list</code><br/>
+Lastly, generate the configuration file.<br/>
+<code>grub2-mkconfig -o /boot/grub2/grub.cfg</code><br/>
+If anything is smooth, when you restart the machine, the item 'Linux Fedora, with Xen hypervisor' will be selected automatically.</p>
+
+<p>Next step is to install SSH. After installing the SSH server, we can use 'ssh' command to link the server from our computers.<br/>
+Run the install command.<br/>
+<code>yum -y install openssh</code><br/>
+And then enable the ssh service.<br/>
+<code>systemctl enable sshd.service</code> <br/>
+If you want to check it ssh service. Run it below.<br/>
+<code>/sbin/service sshd status</code><br/>
+Then, restart the machine.</p>
+
+<p><strong>4. Install Xen domU</strong><br/>
+First, be sure the network is connected.<br/>
+Create directory.</p>
+
+<div class="highlight"><pre><code class="cpp"><span class="n">cd</span> <span class="o">/</span><span class="n">lhome</span>
+<span class="n">mkdir</span> <span class="n">xen</span>
+<span class="n">cd</span> <span class="n">xen</span>
+<span class="n">mkdir</span> <span class="n">f12</span>
+</code></pre></div>
+
+
+<p>Configure the network bridge.<br/>
+Add the content below to the configuration file 'if-XXX'.</p>
+
+<div class="highlight"><pre><code class="cpp"><span class="n">DEVICE</span><span class="o">=</span><span class="s">&quot;em1&quot;</span>
+<span class="n">BRIDGE</span><span class="o">=</span><span class="n">br0</span>
+<span class="n">NM_CONTROLLED</span><span class="o">=</span><span class="n">no</span>
+</code></pre></div>
+
+
+<p>Create a virtual bridge configuration file 'ifcfg-br0'.<br/>
+Add these content below to the 'ifcfg-br0'.</p>
+
+<div class="highlight"><pre><code class="cpp"><span class="n">DEVICE</span><span class="o">=</span><span class="n">br0</span> 
+<span class="n">TYPE</span><span class="o">=</span><span class="n">Bridge</span> 
+<span class="n">BOOTPROTO</span><span class="o">=</span><span class="k">static</span> 
+<span class="n">IPADDR</span><span class="o">=</span><span class="mf">10.16.0.246</span> 
+<span class="n">NETMASK</span><span class="o">=</span><span class="mf">255.255.0.0</span> 
+<span class="n">GATEWAY</span><span class="o">=</span><span class="mf">10.16.0.1</span> 
+<span class="n">ONBOOT</span><span class="o">=</span><span class="n">yes</span> 
+<span class="n">DELAY</span><span class="o">=</span><span class="mi">0</span> 
+<span class="n">NM_CONTROLLED</span><span class="o">=</span><span class="n">no</span>
+</code></pre></div>
+
+
+<p>Then, to enable the br0.<br/>
+<code>ifup br0</code></p>
+
+<p>Next, It' time to start to install the domU. Here, I first show the installaztion of the Fedora 12 as the virtual machine.<br/>
+First, to download two files which names vmlinuz and initrd.img. <br/>
+You can download them from the <strong><a href="http://ftp.cuhk.edu.hk/pub/linux/fedora-archive/fedora/linux/releases/12/Fedora/x86_64/os/images/pxeboot/">CUHK mirror</a></strong>.<br/>
+Put the two files under the directory <code>/lhome/xen/f12</code>. If the download speed is less then 10KB/S, please refer to the Q&amp;A.1.<br/>
+Then create a VBD.<br/>
+<code>dd if=/dev/zero of=/lhome/xen/f12/vmdisk0 bs=1k seek=20480K count=1</code><br/>
+Create a configuration file 'f12.install'. Add these content below to the file.</p>
+
+<div class="highlight"><pre><code class="cpp"><span class="n">name</span><span class="o">=</span><span class="s">&quot;f12install&quot;</span>
+<span class="n">vcpus</span><span class="o">=</span><span class="mi">2</span>
+<span class="n">memory</span><span class="o">=</span><span class="mi">2048</span>
+<span class="n">disk</span> <span class="o">=</span> <span class="p">[</span><span class="err">&#39;</span><span class="n">file</span><span class="o">:/</span><span class="n">lhome</span><span class="o">/</span><span class="n">xen</span><span class="o">/</span><span class="n">f12</span><span class="o">/</span><span class="n">vmdisk0</span><span class="p">,</span><span class="n">xvda</span><span class="p">,</span><span class="n">w</span><span class="err">&#39;</span> <span class="p">]</span>
+<span class="n">vif</span> <span class="o">=</span> <span class="p">[</span> <span class="err">&#39;</span><span class="n">bridge</span><span class="o">=</span><span class="n">br0</span><span class="err">&#39;</span> <span class="p">]</span>
+<span class="n">kernel</span> <span class="o">=</span> <span class="s">&quot;/lhome/xen/f12/vmlinuz&quot;</span>
+<span class="n">ramdisk</span> <span class="o">=</span> <span class="s">&quot;/lhome/xen/f12/initrd.img&quot;</span>
+<span class="n">on_reboot</span> <span class="o">=</span> <span class="err">&#39;</span><span class="n">restart</span><span class="err">&#39;</span>
+<span class="n">on_crash</span> <span class="o">=</span> <span class="err">&#39;</span><span class="n">restart</span><span class="err">&#39;</span>
+</code></pre></div>
+
+
+<p>Then, run the <code>create</code> command to create a new virtual machine.<br/>
+<code>xl createa -c f12.install</code><br/>
+It's a new procedure of operating system installation.
+You must select the 'URL' to install the virtual machine.<br/>
+Then, select the DHCP.<br/>
+Paste the URL <strong><a href="http://ftp.cuhk.edu.hk/pub/linux/fedora-archive/fedora/linux/releases/12/Fedora/x86_64/os/images/">CUHK mirror</a></strong>, <strong>AND manually enter 'install.img' behind the URL</strong>. I don't why. Maybe totally copy will have some characters.<br/>
+Wait for the finishment of retrieving. And the select the 'Use Text Mode'.<br/>
+Then it's same to install a new operating system.<br/>
+You can back to the dom0 by entering the command <code>ctrl+]</code>.</p>
+
+<p>Run a virtual machine need a configuration file too. But, the Configuration is easy. It's listed below.</p>
+
+<div class="highlight"><pre><code class="cpp"><span class="n">name</span><span class="o">=</span><span class="s">&quot;f12install&quot;</span>
+<span class="n">vcpus</span><span class="o">=</span><span class="mi">2</span>
+<span class="n">memory</span><span class="o">=</span><span class="mi">2048</span>
+<span class="n">disk</span> <span class="o">=</span> <span class="p">[</span><span class="err">&#39;</span><span class="n">file</span><span class="o">:/</span><span class="n">lhome</span><span class="o">/</span><span class="n">xen</span><span class="o">/</span><span class="n">f12</span><span class="o">/</span><span class="n">vmdisk0</span><span class="p">,</span><span class="n">xvda</span><span class="p">,</span><span class="n">w</span><span class="err">&#39;</span> <span class="p">]</span>
+<span class="n">vif</span> <span class="o">=</span> <span class="p">[</span> <span class="err">&#39;</span><span class="n">bridge</span><span class="o">=</span><span class="n">br0</span><span class="err">&#39;</span> <span class="p">]</span>
+<span class="n">bootloader</span><span class="o">=</span><span class="s">&quot;/usr/bin/pygrub&quot;</span>
+<span class="n">on_reboot</span> <span class="o">=</span> <span class="err">&#39;</span><span class="n">restart</span><span class="err">&#39;</span>
+<span class="n">on_crash</span> <span class="o">=</span> <span class="err">&#39;</span><span class="n">restart</span><span class="err">&#39;</span>
+</code></pre></div>
+
+
+<p>Save it and name it 'f12.installed'.<br/>
+Run the command below can start the VM.<br/>
+<code>xl create -c f12.installed</code></p>
+
+<p>Then set the domU auto start as the dom0 start.</p>
+
+<div class="highlight"><pre><code class="cpp"><span class="n">cd</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">xen</span><span class="o">/</span><span class="k">auto</span>
+<span class="n">ln</span> <span class="o">-</span><span class="n">s</span> <span class="o">/</span><span class="n">lhome</span><span class="o">/</span><span class="n">xen</span><span class="o">/</span><span class="n">f12</span><span class="o">/</span><span class="n">f12</span><span class="p">.</span><span class="n">installed</span>
+</code></pre></div>
+
+
+<p><br/>
+<br/>
+<br/>
+<strong>Q&amp;A.1</strong><br/>
+If the download speed less than 10KB/S, you can use this method.<br/>
+Edit all .repo file.
+Add the '&amp;country=us' at the end of the 'mirrolist'</p>
+
+    </section>
+    </article>
+  <div class="divider"></div>
+  
+  </ul>
+  <ul class="listing main-listing">
+    <li class="listing-seperator">Recent posts</i>
+    <!--show from 11th, count = 5 -->
+    
+    <li class="listing-seperator"><a href="/archive.html">Long long ago</a></li>
+  </ul>
+</div>
+
+
+        </div>
+        <footer>
+          <div>
+            &copy; 2013 yjjptr | powered by jekyll | themed by <a href="http://lhzhang.com" title="shutter release">shutter release</a> | fork <a href="https://github.com/waynezhang/blog" title="fork he">him</a>
+          </div>
+        </footer>
+      </div> <!-- main -->
+  </body>
+</html>

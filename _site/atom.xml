@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+ 
+ <title>[stream of consciousness]</title>
+ <link href="http://lhzhang.com/atom.xml" rel="self"/>
+ <link href="http://lhzhang.com/"/>
+ <updated>2013-09-26T19:19:09+08:00</updated>
+ <id>http://lhzhang.com/</id>
+ <author>
+   <name>Linghua Zhang</name>
+   <email>linghua.zhang@me.com</email>
+ </author>
+
+ 
+ <entry>
+   <title>Xen installation on Fedora</title>
+   <link href="http://lhzhang.com/2013/09/26/Xen-installation.html"/>
+   <updated>2013-09-26T00:00:00+08:00</updated>
+   <id>http://lhzhang.com/2013/09/26/Xen-installation</id>
+   <content type="html">&lt;p&gt;About the following setups were my work logs when I was an intern in Ningbo Shufang Information Technology Co.,Ltd.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;1. Install Fedora 17&lt;/strong&gt;&lt;br/&gt;
+Here I used 'LiveUSB Createtor' to make a live Fedora.&lt;br/&gt;
+About the procedure of Fedora installaztion, I will omit it;&lt;br/&gt;
+And the disk partition plan is listed below.&lt;/p&gt;
+
+&lt;table border=&quot;1&quot; cellspacing=&quot;0&quot; cellpading=&quot;0&quot; width=&quot;300&quot;&gt;
+&lt;tr align=&quot;center&quot;&gt;
+&lt;td colspan=&quot;2&quot;&gt;BIOS Boot&lt;/td&gt;&lt;td&gt;1MB&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr align=&quot;center&quot;&gt;
+&lt;td&gt;/boot&lt;/td&gt;&lt;td&gt;ext4&lt;/td&gt;&lt;td&gt;5120MB&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr align=&quot;center&quot;&gt;
+&lt;td&gt;/&lt;/td&gt;&lt;td&gt;ext4&lt;/td&gt;&lt;td&gt;51200MB&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr align=&quot;center&quot;&gt;
+&lt;td colspan=&quot;2&quot;&gt;swap&lt;/td&gt;&lt;td&gt;16384MB&lt;/td&gt;
+&lt;/tr &gt;
+&lt;tr align=&quot;center&quot;&gt;
+&lt;td colspan=&quot;2&quot;&gt;physical volume(LVM)&lt;/td&gt;&lt;td&gt;reamining space&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/table&gt;
+
+
+&lt;p&gt;Next, to create a LVM group, to name it vg_xen.&lt;/p&gt;
+
+&lt;table border=&quot;1&quot; cellspacing=&quot;0&quot; cellpading=&quot;0&quot; width=&quot;300&quot;&gt;
+&lt;tr align=&quot;center&quot;&gt;
+&lt;td&gt;lhome&lt;/td&gt; &lt;td&gt;/lhome&lt;/td&gt;&lt;td&gt;ext4&lt;/td&gt;&lt;td&gt;512000MB&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/table&gt;
+
+
+&lt;p&gt;The &lt;code&gt;/lhome&lt;/code&gt; directory is use to install &amp;amp; store virtual machine.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;2. Configure static IP&lt;/strong&gt;&lt;br/&gt;
+Firstly, it is necessary to run the command &lt;code&gt;ifconfig&lt;/code&gt; to find which network card is being used.&lt;br/&gt;
+And then run the command below.&lt;br/&gt;
+&lt;code&gt;vi /etc/sysconfig/network-scripts/ifcfg-XXX&lt;/code&gt;&lt;br/&gt;
+'XXX' is the name of the network card which is being used now.&lt;br/&gt;
+Modify &amp;amp; add the content to &lt;code&gt;ifcfg-XXX&lt;/code&gt; below.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;cpp&quot;&gt;&lt;span class=&quot;n&quot;&gt;BOOTPROTO&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;static&amp;quot;&lt;/span&gt;  
+&lt;span class=&quot;n&quot;&gt;IPADDR&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;10.16.0.246&amp;quot;&lt;/span&gt;  
+&lt;span class=&quot;n&quot;&gt;NETMASK&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;255.255.0.0&amp;quot;&lt;/span&gt;  
+&lt;span class=&quot;n&quot;&gt;GATEWAY&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;10.16.0.1&amp;quot;&lt;/span&gt;  
+&lt;span class=&quot;n&quot;&gt;DNS1&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;10.16.0.1&amp;quot;&lt;/span&gt; 
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Then, restart the network service to take static IP effective. Attention, under Fedora 17, the command is&lt;br/&gt;
+&lt;code&gt;systemctl restart NetworkManager.service&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;3. Install Xen dom0&lt;/strong&gt;&lt;br/&gt;
+Firstly, to clear the iptables.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;cpp&quot;&gt;&lt;span class=&quot;n&quot;&gt;iptables&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;F&lt;/span&gt;   
+&lt;span class=&quot;n&quot;&gt;iptables&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;nat&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;F&lt;/span&gt;   
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;For safety's sake, copy a iptables file befor save rules.&lt;br/&gt;
+&lt;code&gt;cp /etc/sysconfig/iptable   /etc/sysconfig/iptables.bak&lt;/code&gt;&lt;br/&gt;
+&lt;code&gt;iptables-save &amp;gt; /etc/sysconfig/iptables&lt;/code&gt;&lt;br/&gt;
+Restart iptables service.&lt;br/&gt;
+&lt;code&gt;systemctl restart iptables.service&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;Next step is to disable the SELinux.&lt;br/&gt;
+&lt;code&gt;vi /etc/selinux/config&lt;/code&gt;&lt;br/&gt;
+Change 'SELinux' to disabled&lt;br/&gt;
+&lt;code&gt;SELinux=disabled&lt;/code&gt;&lt;br/&gt;
+Restart the machine.&lt;/p&gt;
+
+&lt;p&gt;Now, we can install xen. Run the command below.&lt;br/&gt;
+&lt;code&gt;yum -y install xen&lt;/code&gt;&lt;br/&gt;
+If the download speed is less than 10KB/S, please read the Q&amp;amp;A.1.&lt;/p&gt;
+
+&lt;p&gt;Next is to configure the grub2. Run command.&lt;br/&gt;
+&lt;code&gt;grub2-mkconfig -o /boot/grub2/grub.cfg&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;And then close X windows. Use tty3 as default.&lt;br/&gt;
+&lt;code&gt;rm -f /etc/systemd/system/default.target&lt;/code&gt;&lt;br/&gt;
+&lt;code&gt;ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target&lt;/code&gt;&lt;br/&gt;
+Ok, next starting the system, it will enter the tty3 mode automatically. &lt;br/&gt;
+For the Xen isn't the default boot item. We must set automactically select the Xen to start.&lt;br/&gt;
+So, first list the exsiting items.&lt;br/&gt;
+&lt;code&gt;grep ^menentry /boot/grub2/grub.cfg | cut -d &quot;'&quot; -f&lt;/code&gt;&lt;br/&gt;
+Then set grub default item.&lt;br/&gt;
+&lt;code&gt;grub2-set-default 'Linux Fedora, with Xen hyperisor'&lt;/code&gt;&lt;br/&gt;
+Attention, the 'Linux Fedora, with Xen hypervisor' may not be yours. You must let the name equal to the name of xen.&lt;br/&gt;
+You can run command below to find is the name 'Linux Fedora, with Xen hypervisor' equal to the name of xen. It must be same. Or Xen will not be selected automatically.&lt;br/&gt;
+&lt;code&gt;grub2-editenv list&lt;/code&gt;&lt;br/&gt;
+Lastly, generate the configuration file.&lt;br/&gt;
+&lt;code&gt;grub2-mkconfig -o /boot/grub2/grub.cfg&lt;/code&gt;&lt;br/&gt;
+If anything is smooth, when you restart the machine, the item 'Linux Fedora, with Xen hypervisor' will be selected automatically.&lt;/p&gt;
+
+&lt;p&gt;Next step is to install SSH. After installing the SSH server, we can use 'ssh' command to link the server from our computers.&lt;br/&gt;
+Run the install command.&lt;br/&gt;
+&lt;code&gt;yum -y install openssh&lt;/code&gt;&lt;br/&gt;
+And then enable the ssh service.&lt;br/&gt;
+&lt;code&gt;systemctl enable sshd.service&lt;/code&gt; &lt;br/&gt;
+If you want to check it ssh service. Run it below.&lt;br/&gt;
+&lt;code&gt;/sbin/service sshd status&lt;/code&gt;&lt;br/&gt;
+Then, restart the machine.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;4. Install Xen domU&lt;/strong&gt;&lt;br/&gt;
+First, be sure the network is connected.&lt;br/&gt;
+Create directory.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;cpp&quot;&gt;&lt;span class=&quot;n&quot;&gt;cd&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;lhome&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;mkdir&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;xen&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;cd&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;xen&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;mkdir&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f12&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Configure the network bridge.&lt;br/&gt;
+Add the content below to the configuration file 'if-XXX'.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;cpp&quot;&gt;&lt;span class=&quot;n&quot;&gt;DEVICE&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;em1&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;BRIDGE&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;br0&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;NM_CONTROLLED&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;no&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Create a virtual bridge configuration file 'ifcfg-br0'.&lt;br/&gt;
+Add these content below to the 'ifcfg-br0'.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;cpp&quot;&gt;&lt;span class=&quot;n&quot;&gt;DEVICE&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;br0&lt;/span&gt; 
+&lt;span class=&quot;n&quot;&gt;TYPE&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;Bridge&lt;/span&gt; 
+&lt;span class=&quot;n&quot;&gt;BOOTPROTO&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;static&lt;/span&gt; 
+&lt;span class=&quot;n&quot;&gt;IPADDR&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;10.16.0.246&lt;/span&gt; 
+&lt;span class=&quot;n&quot;&gt;NETMASK&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;255.255.0.0&lt;/span&gt; 
+&lt;span class=&quot;n&quot;&gt;GATEWAY&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mf&quot;&gt;10.16.0.1&lt;/span&gt; 
+&lt;span class=&quot;n&quot;&gt;ONBOOT&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;yes&lt;/span&gt; 
+&lt;span class=&quot;n&quot;&gt;DELAY&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt; 
+&lt;span class=&quot;n&quot;&gt;NM_CONTROLLED&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;no&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Then, to enable the br0.&lt;br/&gt;
+&lt;code&gt;ifup br0&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;Next, It' time to start to install the domU. Here, I first show the installaztion of the Fedora 12 as the virtual machine.&lt;br/&gt;
+First, to download two files which names vmlinuz and initrd.img. &lt;br/&gt;
+You can download them from the &lt;strong&gt;&lt;a href=&quot;http://ftp.cuhk.edu.hk/pub/linux/fedora-archive/fedora/linux/releases/12/Fedora/x86_64/os/images/pxeboot/&quot;&gt;CUHK mirror&lt;/a&gt;&lt;/strong&gt;.&lt;br/&gt;
+Put the two files under the directory &lt;code&gt;/lhome/xen/f12&lt;/code&gt;. If the download speed is less then 10KB/S, please refer to the Q&amp;amp;A.1.&lt;br/&gt;
+Then create a VBD.&lt;br/&gt;
+&lt;code&gt;dd if=/dev/zero of=/lhome/xen/f12/vmdisk0 bs=1k seek=20480K count=1&lt;/code&gt;&lt;br/&gt;
+Create a configuration file 'f12.install'. Add these content below to the file.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;cpp&quot;&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;f12install&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;vcpus&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;memory&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2048&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;disk&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;lhome&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xen&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f12&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;vmdisk0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xvda&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;w&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;vif&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bridge&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;br0&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;kernel&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;/lhome/xen/f12/vmlinuz&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;ramdisk&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;/lhome/xen/f12/initrd.img&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;on_reboot&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;restart&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;on_crash&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;restart&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Then, run the &lt;code&gt;create&lt;/code&gt; command to create a new virtual machine.&lt;br/&gt;
+&lt;code&gt;xl createa -c f12.install&lt;/code&gt;&lt;br/&gt;
+It's a new procedure of operating system installation.
+You must select the 'URL' to install the virtual machine.&lt;br/&gt;
+Then, select the DHCP.&lt;br/&gt;
+Paste the URL &lt;strong&gt;&lt;a href=&quot;http://ftp.cuhk.edu.hk/pub/linux/fedora-archive/fedora/linux/releases/12/Fedora/x86_64/os/images/&quot;&gt;CUHK mirror&lt;/a&gt;&lt;/strong&gt;, &lt;strong&gt;AND manually enter 'install.img' behind the URL&lt;/strong&gt;. I don't why. Maybe totally copy will have some characters.&lt;br/&gt;
+Wait for the finishment of retrieving. And the select the 'Use Text Mode'.&lt;br/&gt;
+Then it's same to install a new operating system.&lt;br/&gt;
+You can back to the dom0 by entering the command &lt;code&gt;ctrl+]&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Run a virtual machine need a configuration file too. But, the Configuration is easy. It's listed below.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;cpp&quot;&gt;&lt;span class=&quot;n&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;f12install&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;vcpus&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;memory&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;2048&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;disk&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;file&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;:/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;lhome&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xen&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f12&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;vmdisk0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xvda&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;w&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;vif&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;bridge&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;br0&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;bootloader&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;/usr/bin/pygrub&amp;quot;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;on_reboot&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;restart&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;on_crash&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;restart&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;&amp;#39;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Save it and name it 'f12.installed'.&lt;br/&gt;
+Run the command below can start the VM.&lt;br/&gt;
+&lt;code&gt;xl create -c f12.installed&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;Then set the domU auto start as the dom0 start.&lt;/p&gt;
+
+&lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;cpp&quot;&gt;&lt;span class=&quot;n&quot;&gt;cd&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;etc&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xen&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;k&quot;&gt;auto&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;ln&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;s&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;lhome&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;xen&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f12&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;/&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f12&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;installed&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;&lt;br/&gt;
+&lt;br/&gt;
+&lt;br/&gt;
+&lt;strong&gt;Q&amp;amp;A.1&lt;/strong&gt;&lt;br/&gt;
+If the download speed less than 10KB/S, you can use this method.&lt;br/&gt;
+Edit all .repo file.
+Add the '&amp;amp;country=us' at the end of the 'mirrolist'&lt;/p&gt;
+</content>
+ </entry>
+ 
+ 
+</feed>
