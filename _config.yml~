@@ -1,6 +1,0 @@
-markdown: rdiscount
-pygments: true
-safe: true
-permalink: /:year/:month/:day/:title.html
-name: "[stream of consciousness]"
-baseurl: /blog
